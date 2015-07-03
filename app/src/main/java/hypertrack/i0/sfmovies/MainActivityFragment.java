@@ -1,10 +1,16 @@
 package hypertrack.i0.sfmovies;
 
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationListener;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -21,24 +27,97 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+import android.location.Geocoder;
+import android.widget.EditText;
+import android.widget.TextView;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.MapsInitializer;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 /**
  * Created by anuj on 3/7/15.
  */
-public  class MainActivityFragment extends Fragment {
+public  class MainActivityFragment extends Fragment implements LocationListener {
 
+    GoogleMap googleMap;
 
-
+    private String[] Locations;
+    private ArrayList<MyMarker> mMyMarkersArray = new ArrayList<MyMarker>();
+    private Toolbar mToolbar;
+    private MenuItem mSearchAction;
+    private boolean isSearchOpened = false;
+    private EditText edtSeach;
+    private LatLng ltlng;
+    double lat,lng;
+     MapView mMapView;
     public MainActivityFragment() {
     }
+
+
+
+    @Override
+    public void onProviderDisabled(String provider) {
+        // TODO Auto-generated method stub
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+        // TODO Auto-generated method stub
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+        // TODO Auto-generated method stub
+    }
+
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
+        View rootview = inflater.inflate(R.layout.fragment_main, container, false);
+        mMapView = (MapView) rootview.findViewById(R.id.googleMap);
+        mMapView.onCreate(savedInstanceState);
+
+        mMapView.onResume();// needed to get the map to display immediately
+
+        try {
+            MapsInitializer.initialize(getActivity().getApplicationContext());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        googleMap = mMapView.getMap();
+        // latitude and longitude
+
+
+
+
+
+
+        //googleMap = ((SupportMapFragment)MainActivity.fragmentManager.findFragmentById(R.id.googleMap)).getMap();
+
+
+
         String[] languages = {"Android","Alcatraz","180","50 First Dates","Ant-Man","C","ABC"};
 
-        View rootview = inflater.inflate(R.layout.fragment_main, container, false);
         AutoCompleteTextView text=(AutoCompleteTextView)rootview.findViewById(R.id.simple_rest_autocompletion);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(),android.R.layout.simple_list_item_1,languages);
         text.setAdapter(adapter);
@@ -50,6 +129,7 @@ public  class MainActivityFragment extends Fragment {
                 Log.i("Auto test", parent.getAdapter().getItem(position).toString());
                FetchLocation fetchlocation = new FetchLocation();
                 fetchlocation.execute(parent.getAdapter().getItem(position).toString());
+
                 //Toast.makeText(getBaseContext(), "Autocomplete" + "youe add color" + parent.getAdapter().getItem(position).toString(), Toast.LENGTH_LONG).show();
             }
         });
@@ -60,6 +140,30 @@ public  class MainActivityFragment extends Fragment {
 
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        mMapView.onResume();
+    }
+
+    private void plotMarkers(ArrayList<MyMarker> markers)
+    {
+        if(markers.size() > 0)
+        {
+            for (MyMarker myMarker : markers)
+            {
+
+                // Create user marker with custom icon and other options
+                MarkerOptions markerOption = new MarkerOptions().position(new LatLng(myMarker.getmLatitude(), myMarker.getmLongitude()));
+                // markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.currentlocation_icon));
+
+                Marker currentMarker = googleMap.addMarker(markerOption);
+                // mMarkersHashMap.put(currentMarker, myMarker);
+
+                //  mMap.setInfoWindowAdapter(new MarkerInfoWindowAdapter());
+            }
+        }
+    }
 
     public class FetchLocation extends AsyncTask<String, Void, String[]> {
 
@@ -126,6 +230,38 @@ public  class MainActivityFragment extends Fragment {
         }
 
 
+         @Override
+         protected  void onPostExecute(String[] result)
+        {
+            if(result !=null){
+
+                mMyMarkersArray=new ArrayList<MyMarker>();;
+                Geocoder geo=new Geocoder(getActivity().getApplicationContext(), Locale.getDefault());
+                try {
+                    for(int j=0;j<result.length;j++) {
+                        System.out.println(result[j]);
+                        List<Address> list = geo.getFromLocationName(result[j], 3);
+                        if(list.size()>0) {
+                            Address address = list.get(0);
+                            lat = address.getLatitude();
+                            lng = address.getLongitude();
+                            mMyMarkersArray.add(new MyMarker("Brasil", "icon1", lat, lng));
+
+                            System.out.println("lat long =" + lat + " " + lng);
+                        }
+                    }
+                    plotMarkers(mMyMarkersArray);
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+
+
+
+            }
+        }
+
         private String[] getlocations(String moviesjson) throws JSONException
         {
 
@@ -147,6 +283,8 @@ public  class MainActivityFragment extends Fragment {
             for(String s: locations){
                 array[i++] = s;
             }
+
+          //  Geocoder geoCoder = new Geocoder(MainActivity.this, Locale.getDefault());
 
             return array;
 
