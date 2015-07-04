@@ -29,6 +29,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.StringTokenizer;
 
 import android.location.Geocoder;
 import android.widget.EditText;
@@ -61,6 +62,7 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
     private LatLng ltlng;
     double lat,lng;
      MapView mMapView;
+    View rootview;
     public MainActivityFragment() {
     }
 
@@ -92,11 +94,11 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        View rootview = inflater.inflate(R.layout.fragment_main, container, false);
+         rootview = inflater.inflate(R.layout.fragment_main, container, false);
         mMapView = (MapView) rootview.findViewById(R.id.googleMap);
         mMapView.onCreate(savedInstanceState);
-
-        mMapView.onResume();// needed to get the map to display immediately
+      //  setUpMapIfNeeded(rootview);
+       mMapView.onResume();// needed to get the map to display immediately
 
         try {
             MapsInitializer.initialize(getActivity().getApplicationContext());
@@ -116,7 +118,7 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
 
 
 
-        String[] languages = {"Android","Alcatraz","180","50 First Dates","Ant-Man","C","ABC"};
+        String[] languages = {"Android","Alcatraz","180","A View to a Kill","Ant-Man","Fearless","ABC"};
 
         AutoCompleteTextView text=(AutoCompleteTextView)rootview.findViewById(R.id.simple_rest_autocompletion);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(),android.R.layout.simple_list_item_1,languages);
@@ -140,6 +142,15 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
 
     }
 
+    private void setUpMapIfNeeded(View inflatedView) {
+        if (mMapView == null) {
+            mMapView = ((MapView) inflatedView.findViewById(R.id.googleMap));
+            if (mMapView != null) {
+                plotMarkers(mMyMarkersArray);
+            }
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
@@ -148,6 +159,8 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
 
     private void plotMarkers(ArrayList<MyMarker> markers)
     {
+        googleMap.clear();
+
         if(markers.size() > 0)
         {
             for (MyMarker myMarker : markers)
@@ -172,13 +185,25 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
         @Override
         protected String[] doInBackground(String... Title) {
 
+
+
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
 
             String moviesjsondata = null;
 
             try {
-                URL url = new URL("http://192.168.1.5:8080/HyperTrack/movies/"+Title[0]);
+
+                String mtitle="";
+                StringTokenizer str = new StringTokenizer(Title[0]);
+               // str.nextElement();
+                while(str.hasMoreElements())
+                {
+                    mtitle+=str.nextElement()+"%20";
+                }
+                Log.v(LOG_TAG,mtitle);
+
+                URL url = new URL("http://192.168.1.5:8080/HyperTrack/movies/"+mtitle);
                 Log.v(LOG_TAG,url.toString());
                 urlConnection = (HttpURLConnection)url.openConnection();
                 urlConnection.setRequestMethod("GET");
@@ -234,7 +259,6 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
          protected  void onPostExecute(String[] result)
         {
             if(result !=null){
-
                 mMyMarkersArray=new ArrayList<MyMarker>();;
                 Geocoder geo=new Geocoder(getActivity().getApplicationContext(), Locale.getDefault());
                 try {
@@ -245,12 +269,16 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
                             Address address = list.get(0);
                             lat = address.getLatitude();
                             lng = address.getLongitude();
+
+
                             mMyMarkersArray.add(new MyMarker("Brasil", "icon1", lat, lng));
 
                             System.out.println("lat long =" + lat + " " + lng);
                         }
                     }
                     plotMarkers(mMyMarkersArray);
+                   // setUpMapIfNeeded(rootview);
+
                 }
                 catch (Exception e)
                 {
@@ -261,6 +289,8 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
 
             }
         }
+
+
 
         private String[] getlocations(String moviesjson) throws JSONException
         {
