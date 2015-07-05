@@ -8,6 +8,8 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -37,17 +39,20 @@ import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 /**
- * Created by anuj on 3/7/15.
+ * Created by anuj on 4/7/15.
  */
 public  class MainActivityFragment extends Fragment implements LocationListener {
 
@@ -61,8 +66,10 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
     private EditText edtSeach;
     private LatLng ltlng;
     double lat,lng;
-     MapView mMapView;
+    MapView mMapView;
     View rootview;
+    ArrayAdapter<String> adapter;
+    AutoCompleteTextView text;
     public MainActivityFragment() {
     }
 
@@ -94,10 +101,9 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-         rootview = inflater.inflate(R.layout.fragment_main, container, false);
-        mMapView = (MapView) rootview.findViewById(R.id.googleMap);
-        mMapView.onCreate(savedInstanceState);
-      //  setUpMapIfNeeded(rootview);
+       rootview = inflater.inflate(R.layout.fragment_main, container, false);
+       mMapView = (MapView) rootview.findViewById(R.id.googleMap);
+       mMapView.onCreate(savedInstanceState);
        mMapView.onResume();// needed to get the map to display immediately
 
         try {
@@ -107,23 +113,45 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
         }
 
         googleMap = mMapView.getMap();
-        // latitude and longitude
+        UiSettings mapui = googleMap.getUiSettings();
+        mapui.setZoomControlsEnabled(true);
 
 
+        text=(AutoCompleteTextView)rootview.findViewById(R.id.simple_rest_autocompletion);
+        adapter = new ArrayAdapter<String>(getActivity(),android.R.layout.simple_list_item_1);
 
+        adapter.setNotifyOnChange(true);
 
-
-
-        //googleMap = ((SupportMapFragment)MainActivity.fragmentManager.findFragmentById(R.id.googleMap)).getMap();
-
-
-
-        String[] languages = {"Android","Alcatraz","180","A View to a Kill","Ant-Man","Fearless","ABC"};
-
-        AutoCompleteTextView text=(AutoCompleteTextView)rootview.findViewById(R.id.simple_rest_autocompletion);
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(),android.R.layout.simple_list_item_1,languages);
         text.setAdapter(adapter);
         text.setThreshold(1);
+
+        text.addTextChangedListener(new TextWatcher() {
+            public void afterTextChanged(Editable s) {}
+
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+                if (text.isPerformingCompletion()) {
+                    // An item has been selected from the list. Ignore.
+                    return;
+                }
+
+                String newText = s.toString();
+                if(newText.length()==1) {
+
+                    Fetchsuggestion fetchsuggestion = new Fetchsuggestion();
+                    fetchsuggestion.execute(newText);
+                }
+                else
+                {
+                    googleMap.clear();
+
+                }
+            }
+
+
+            });
 
         text.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -131,25 +159,14 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
                 Log.i("Auto test", parent.getAdapter().getItem(position).toString());
                FetchLocation fetchlocation = new FetchLocation();
                 fetchlocation.execute(parent.getAdapter().getItem(position).toString());
-
                 //Toast.makeText(getBaseContext(), "Autocomplete" + "youe add color" + parent.getAdapter().getItem(position).toString(), Toast.LENGTH_LONG).show();
             }
         });
 
         return rootview;
 
-
-
     }
 
-    private void setUpMapIfNeeded(View inflatedView) {
-        if (mMapView == null) {
-            mMapView = ((MapView) inflatedView.findViewById(R.id.googleMap));
-            if (mMapView != null) {
-                plotMarkers(mMyMarkersArray);
-            }
-        }
-    }
 
     @Override
     public void onResume() {
@@ -167,15 +184,20 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
             {
 
                 // Create user marker with custom icon and other options
-                MarkerOptions markerOption = new MarkerOptions().position(new LatLng(myMarker.getmLatitude(), myMarker.getmLongitude()));
-                // markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.currentlocation_icon));
+                MarkerOptions markerOption = new MarkerOptions().position(new LatLng(myMarker.getmLatitude(), myMarker.getmLongitude())).title(myMarker.getmLabel());
+
+                markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.abc_ic_commit_search_api_mtrl_alpha));
 
                 Marker currentMarker = googleMap.addMarker(markerOption);
-                // mMarkersHashMap.put(currentMarker, myMarker);
 
-                //  mMap.setInfoWindowAdapter(new MarkerInfoWindowAdapter());
             }
+
+            MyMarker firstMarker = markers.get(0);
+            LatLng latLng = new LatLng(firstMarker.getmLatitude(), firstMarker.getmLongitude());
+            googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
         }
+
+
     }
 
     public class FetchLocation extends AsyncTask<String, Void, String[]> {
@@ -196,14 +218,14 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
 
                 String mtitle="";
                 StringTokenizer str = new StringTokenizer(Title[0]);
-               // str.nextElement();
+
                 while(str.hasMoreElements())
                 {
                     mtitle+=str.nextElement()+"%20";
                 }
                 Log.v(LOG_TAG,mtitle);
 
-                URL url = new URL("http://192.168.1.5:8080/HyperTrack/movies/"+mtitle);
+                URL url = new URL("http://52.25.133.178:8080/HyperTrack/movies/"+mtitle);
                 Log.v(LOG_TAG,url.toString());
                 urlConnection = (HttpURLConnection)url.openConnection();
                 urlConnection.setRequestMethod("GET");
@@ -220,9 +242,7 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
                 String line;
 
                 while ((line = reader.readLine()) != null) {
-                    // Since it's JSON, adding a newline isn't necessary (it won't affect parsing)
-                    // But it does make debugging a *lot* easier if you print out the completed
-                    // buffer for debugging.
+
                     buffer.append(line + "\n");
                 }
 
@@ -235,8 +255,7 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
 
             } catch (Exception e) {
                 Log.e("PlaceholderFragment", "Error ", e);
-                // If the code didn't successfully get the weather data, there's no point in attempting
-                // to parse it.
+
                 moviesjsondata = null;
             }
 
@@ -271,13 +290,12 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
                             lng = address.getLongitude();
 
 
-                            mMyMarkersArray.add(new MyMarker("Brasil", "icon1", lat, lng));
+                            mMyMarkersArray.add(new MyMarker(result[j], "icon1", lat, lng));
 
                             System.out.println("lat long =" + lat + " " + lng);
                         }
                     }
                     plotMarkers(mMyMarkersArray);
-                   // setUpMapIfNeeded(rootview);
 
                 }
                 catch (Exception e)
@@ -314,10 +332,120 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
                 array[i++] = s;
             }
 
-          //  Geocoder geoCoder = new Geocoder(MainActivity.this, Locale.getDefault());
-
             return array;
 
         }
     }
+
+
+
+    public class Fetchsuggestion extends AsyncTask<String,Void,String[]> {
+
+        String LOG_TAG = FetchLocation.class.getSimpleName();
+
+        @Override
+        protected String[] doInBackground(String... Title) {
+
+
+            HttpURLConnection urlConnection = null;
+            BufferedReader reader = null;
+
+            String titlejson = null;
+
+            try {
+
+                String mtitle="";
+                StringTokenizer str = new StringTokenizer(Title[0]);
+                //str.nextElement();
+                if(str.countTokens()>1) {
+                    int count =str.countTokens();
+                    while (count>1) {
+                          mtitle += str.nextElement() + "%20";
+                        count--;
+                    }
+                }
+                else
+                {
+                    mtitle=Title[0];
+                }
+                Log.v(LOG_TAG,mtitle);
+
+                URL url = new URL("http://52.25.133.178:8080/HyperTrack/recommend/"+mtitle);
+                Log.v(LOG_TAG,url.toString());
+                urlConnection = (HttpURLConnection)url.openConnection();
+                urlConnection.setRequestMethod("GET");
+                urlConnection.connect();
+
+                InputStream inputStream =urlConnection.getInputStream();
+                StringBuffer  buffer = new StringBuffer();
+                if(inputStream==null)
+                {
+                    titlejson=null;
+                }
+                reader = new BufferedReader(new InputStreamReader(inputStream));
+
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+
+                    buffer.append(line + "\n");
+                }
+
+                if (buffer.length() == 0) {
+                    // Stream was empty.  No point in parsing.
+                    titlejson = null;
+                }
+                titlejson = buffer.toString();
+                Log.v(LOG_TAG, "movies json string" + titlejson);
+
+            } catch (Exception e) {
+                Log.e("PlaceholderFragment", "Error ", e);
+                titlejson = null;
+            }
+
+            try
+            {
+                String [] suggestions = getsuggestions(titlejson);
+                for(String s:suggestions) {
+                    Log.v(LOG_TAG, s);
+                }
+                return suggestions;
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+
+            return null;
+        }
+
+        private String[] getsuggestions(String titlejson) throws JSONException
+        {
+
+            final String Movie = "data";
+            JSONObject titleJson = new JSONObject(titlejson);
+            JSONArray titlesArray = titleJson.getJSONArray(Movie);
+
+            String[] arr =new String[titlesArray.length()];
+            for(int i=0;i<titlesArray.length();i++)
+                arr[i]=titlesArray.getString(i);
+
+            return arr;
+
+        }
+
+        @Override
+        protected  void onPostExecute(String[] result)
+        {
+            if(result !=null){
+
+                adapter=null;
+                adapter = new ArrayAdapter<String>(getActivity(),android.R.layout.simple_list_item_1,result);
+                text.setAdapter(adapter);
+                adapter.notifyDataSetChanged();
+            }
+        }
+
+
+    }
+
 }
