@@ -70,6 +70,9 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
     View rootview;
     ArrayAdapter<String> adapter;
     AutoCompleteTextView text;
+
+    String globalurl="http://52.25.133.178:8080/HyperTrack/";
+
     public MainActivityFragment() {
     }
 
@@ -101,10 +104,10 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-       rootview = inflater.inflate(R.layout.fragment_main, container, false);
-       mMapView = (MapView) rootview.findViewById(R.id.googleMap);
-       mMapView.onCreate(savedInstanceState);
-       mMapView.onResume();// needed to get the map to display immediately
+        rootview = inflater.inflate(R.layout.fragment_main, container, false);
+        mMapView = (MapView) rootview.findViewById(R.id.googleMap);
+        mMapView.onCreate(savedInstanceState);
+        mMapView.onResume();// needed to get the map to display immediately
 
         try {
             MapsInitializer.initialize(getActivity().getApplicationContext());
@@ -151,13 +154,13 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
             }
 
 
-            });
+        });
 
         text.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Log.i("Auto test", parent.getAdapter().getItem(position).toString());
-               FetchLocation fetchlocation = new FetchLocation();
+                FetchLocation fetchlocation = new FetchLocation();
                 fetchlocation.execute(parent.getAdapter().getItem(position).toString());
                 //Toast.makeText(getBaseContext(), "Autocomplete" + "youe add color" + parent.getAdapter().getItem(position).toString(), Toast.LENGTH_LONG).show();
             }
@@ -185,8 +188,6 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
 
                 // Create user marker with custom icon and other options
                 MarkerOptions markerOption = new MarkerOptions().position(new LatLng(myMarker.getmLatitude(), myMarker.getmLongitude())).title(myMarker.getmLabel());
-
-                markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.abc_ic_commit_search_api_mtrl_alpha));
 
                 Marker currentMarker = googleMap.addMarker(markerOption);
 
@@ -225,7 +226,7 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
                 }
                 Log.v(LOG_TAG,mtitle);
 
-                URL url = new URL("http://52.25.133.178:8080/HyperTrack/movies/"+mtitle);
+                URL url = new URL(globalurl+"movies/"+mtitle);
                 Log.v(LOG_TAG,url.toString());
                 urlConnection = (HttpURLConnection)url.openConnection();
                 urlConnection.setRequestMethod("GET");
@@ -237,7 +238,7 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
                 {
                     moviesjsondata=null;
                 }
-                   reader = new BufferedReader(new InputStreamReader(inputStream));
+                reader = new BufferedReader(new InputStreamReader(inputStream));
 
                 String line;
 
@@ -274,8 +275,8 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
         }
 
 
-         @Override
-         protected  void onPostExecute(String[] result)
+        @Override
+        protected  void onPostExecute(String[] result)
         {
             if(result !=null){
                 mMyMarkersArray=new ArrayList<MyMarker>();;
@@ -323,8 +324,8 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
             {
                 String location;
                 JSONObject MovieObj = moviesArray.getJSONObject(i);
-                 String loc = MovieObj.getString("locations");
-                     locations.add(loc);
+                String loc = MovieObj.getString("locations");
+                locations.add(loc);
             }
             String[] array = new String[locations.size()];
             int i=0;
@@ -360,7 +361,7 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
                 if(str.countTokens()>1) {
                     int count =str.countTokens();
                     while (count>1) {
-                          mtitle += str.nextElement() + "%20";
+                        mtitle += str.nextElement() + "%20";
                         count--;
                     }
                 }
@@ -370,7 +371,7 @@ public  class MainActivityFragment extends Fragment implements LocationListener 
                 }
                 Log.v(LOG_TAG,mtitle);
 
-                URL url = new URL("http://52.25.133.178:8080/HyperTrack/recommend/"+mtitle);
+                URL url = new URL(globalurl+"recommend/"+mtitle);
                 Log.v(LOG_TAG,url.toString());
                 urlConnection = (HttpURLConnection)url.openConnection();
                 urlConnection.setRequestMethod("GET");
